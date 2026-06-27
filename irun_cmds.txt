@@ -1,0 +1,102 @@
+########################################## Arithmetic ###########################################
+
+# KSA
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps ../tb/tb_ksa_hostile.sv ../tb/uvm_report_pkg.sv ../code/ksa_32bit.sv -top tb_ksa_hostile
+
+# Multiplier
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps ../tb/tb_multiplier_hostile.sv ../tb/uvm_report_pkg.sv ../code/booth_encoder.sv ../code/partial_product_gen.sv ../code/wallace_tree.sv -top tb_multiplier_hostile
+
+# Single PE
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/pe_uvm ../tb/pe_uvm/pe_if.sv ../tb/pe_uvm/pe_uvm_pkg.sv ../tb/pe_uvm/tb_pe_uvm_top.sv ../code/booth_encoder.sv ../code/partial_product_gen.sv ../code/wallace_tree.sv ../code/ksa_32bit.sv ../code/pe_pipelined.sv -top tb_pe_uvm_top
+
+# 16x16 Systolic Array
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/16x16_uvm ../tb/16x16_uvm/systolic_if.sv ../tb/16x16_uvm/sys_uvm_pkg.sv ../tb/16x16_uvm/tb_sys_uvm_top.sv ../code/booth_encoder.sv ../code/partial_product_gen.sv ../code/wallace_tree.sv ../code/ksa_32bit.sv ../code/pe_pipelined.sv ../code/systolic_array_16x16.sv -top tb_sys_uvm_top +UVM_TESTNAME=systolic_test +SEQ_NAME=stress_1000_seq
+
+########################################## Memory ###########################################
+
+# SRAM Bank
+irun -64bit -sv -access +rwc -timescale 1ns/1ps ../code/sram_bank_256x8.sv ../tb/sram_tb/tb_sram_bank.sv -top tb_sram_bank
+
+# SRAM Subsystem
+irun -64bit -sv -access +rwc -timescale 1ns/1ps ../code/sram_bank_256x8.sv ../code/sram_subsystem_16bank.sv ../tb/sram_tb/tb_sram_subsystem.sv -top tb_sram_subsystem
+
+########################################## BIST ###########################################
+
+# BIST Top Controller
+irun -64bit -sv -access +rwc -timescale 1ns/1ps ../code/mbist_march_c.sv ../code/lfsr_prpg.sv ../code/misr_compressor.sv ../code/bist_top_controller.sv ../tb/bist_tb/tb_bist_top_controller.sv -top tb_bist_top_controller
+
+# MISR
+irun -64bit -sv -access +rwc -timescale 1ns/1ps ../code/misr_compressor.sv ../tb/bist_tb/tb_misr_compressor.sv -top tb_misr_compressor
+
+# LFSR
+irun -64bit -sv -access +rwc -timescale 1ns/1ps ../code/lfsr_prpg.sv ../tb/bist_tb/tb_lfsr_prpg.sv -top tb_lfsr_prpg
+
+# MBIST
+irun -64bit -sv -access +rwc -timescale 1ns/1ps ../code/mbist_march_c.sv ../tb/bist_tb/tb_mbist_march_c.sv -top tb_mbist_march_c
+
+########################################## AXI ###########################################
+
+# AXIS TX
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps ../code/axis_tx.sv ../tb/axi_uvm/transmitter/axis_tx_if.sv ../tb/axi_uvm/transmitter/axis_tx_pkg.sv ../tb/axi_uvm/transmitter/tb_axis_tx_top.sv -top tb_axis_tx_top +UVM_TESTNAME=tc1_test
+
+# AXIS RX
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps +incdir+../tb/axi_uvm/receiver ../code/axis_rx.sv ../tb/axi_uvm/receiver/axis_rx_if.sv ../tb/axi_uvm/receiver/axis_rx_pkg.sv ../tb/axi_uvm/receiver/tb_axis_rx_top.sv -top tb_axis_rx_top +UVM_TESTNAME=tc1_test
+
+# AXI-Lite
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps +incdir+../tb/axi_lite_uvm ../code/axi_lite_config.sv ../tb/axi_lite_uvm/axi_lite_if.sv ../tb/axi_lite_uvm/axi_lite_uvm_pkg.sv ../tb/axi_lite_uvm/tb_axi_lite_top.sv -top tb_axi_lite_top +UVM_TESTNAME=tc1_test
+
+########################################## Core FSM ###########################################
+
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps +incdir+../tb/core_fsm_uvm ../code/core_fsm_ctrl.sv ../tb/core_fsm_uvm/fsm_ctrl_if.sv ../tb/core_fsm_uvm/fsm_ctrl_pkg.sv ../tb/core_fsm_uvm/tb_fsm_top.sv -top tb_fsm_top +UVM_TESTNAME=tc1_test
+
+########################################## Top TensorCore ###########################################
+
+# Build golden model
+g++ -fPIC -shared -I/home/ece-server/cadance_install/INCISIVE152/tools/inca/include -o top_golden_model.so ../tb/top_tensorcore_uvm/env/top_golden_model.cpp
+
+# Run full top-level signoff test
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv ../code/*.sv ../tb/top_tensorcore_uvm/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test -gui -linedebug
+
+
+
+
+
+######################## testing ########################
+
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv ../code/*.sv ../tb/top_tensorcore_uvm/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test -gui -linedebug
+
+
+
+#################### 
+
+# Step 1: Compile the golden model shared library
+g++ -m64 -fPIC -shared -I/home/ece-server/cadance_install/INCISIVE152/tools/inca/include -o top_golden_model.so ../tb/top_tensorcore_uvm/env/top_golden_model.cpp
+
+# Step 2: Run the TensorCore top-level UVM testbench with the compiled golden model
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv ../code/*.sv ../tb/top_tensorcore_uvm/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test +UVM_TIMEOUT=500000ns -gui -linedebug 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
