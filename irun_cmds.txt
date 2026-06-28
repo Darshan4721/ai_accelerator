@@ -1,10 +1,10 @@
 ########################################## Arithmetic ###########################################
 
 # KSA
-irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps ../tb/tb_ksa_hostile.sv ../tb/uvm_report_pkg.sv ../code/ksa_32bit.sv -top tb_ksa_hostile
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps ../tb/packages/uvm_report_pkg.sv ../tb/ksa/tb_ksa_hostile.sv ../code/ksa_32bit.sv -top tb_ksa_hostile
 
 # Multiplier
-irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps ../tb/tb_multiplier_hostile.sv ../tb/uvm_report_pkg.sv ../code/booth_encoder.sv ../code/partial_product_gen.sv ../code/wallace_tree.sv -top tb_multiplier_hostile
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps ../tb/packages/uvm_report_pkg.sv ../tb/multiplier/tb_multiplier_hostile.sv ../code/booth_encoder.sv ../code/partial_product_gen.sv ../code/wallace_tree.sv -top tb_multiplier_hostile
 
 # Single PE
 irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/pe_uvm ../tb/pe_uvm/pe_if.sv ../tb/pe_uvm/pe_uvm_pkg.sv ../tb/pe_uvm/tb_pe_uvm_top.sv ../code/booth_encoder.sv ../code/partial_product_gen.sv ../code/wallace_tree.sv ../code/ksa_32bit.sv ../code/pe_pipelined.sv -top tb_pe_uvm_top
@@ -18,7 +18,7 @@ irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/16x16_uvm ../
 irun -64bit -sv -access +rwc -timescale 1ns/1ps ../code/sram_bank_256x8.sv ../tb/sram_tb/tb_sram_bank.sv -top tb_sram_bank
 
 # SRAM Subsystem
-irun -64bit -sv -access +rwc -timescale 1ns/1ps ../code/sram_bank_256x8.sv ../code/sram_subsystem_16bank.sv ../tb/sram_tb/tb_sram_subsystem.sv -top tb_sram_subsystem
+irun -64bit -sv -access +rwc -timescale 1ns/1ps /home/DARSHAN/volare/volare/gf180mcu/versions/c6d73a35f524070e85faff4a6a9eef49553ebc2b/gf180mcuD/libs.ref/gf180mcu_fd_ip_sram/verilog/gf180mcu_fd_ip_sram__sram256x8m8wm1.v ../code/sram_subsystem_16bank.sv ../tb/sram_tb/tb_sram_subsystem.sv -top tb_sram_subsystem
 
 ########################################## BIST ###########################################
 
@@ -55,17 +55,11 @@ irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps +incdir+../tb/core_fsm_uvm 
 g++ -fPIC -shared -I/home/ece-server/cadance_install/INCISIVE152/tools/inca/include -o top_golden_model.so ../tb/top_tensorcore_uvm/env/top_golden_model.cpp
 
 # Run full top-level signoff test
-irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv ../code/*.sv ../tb/top_tensorcore_uvm/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test -gui -linedebug
-
-
-
-
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv /home/DARSHAN/volare/volare/gf180mcu/versions/c6d73a35f524070e85faff4a6a9eef49553ebc2b/gf180mcuD/libs.ref/gf180mcu_fd_ip_sram/verilog/gf180mcu_fd_ip_sram__sram256x8m8wm1.v ../code/*.sv ../tb/testbench/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test -gui -linedebug
 
 ######################## testing ########################
 
-irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv ../code/*.sv ../tb/top_tensorcore_uvm/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test -gui -linedebug
-
-
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv /home/DARSHAN/volare/volare/gf180mcu/versions/c6d73a35f524070e85faff4a6a9eef49553ebc2b/gf180mcuD/libs.ref/gf180mcu_fd_ip_sram/verilog/gf180mcu_fd_ip_sram__sram256x8m8wm1.v ../code/*.sv ../tb/testbench/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test -gui -linedebug
 
 #################### 
 
@@ -73,30 +67,21 @@ irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcor
 g++ -m64 -fPIC -shared -I/home/ece-server/cadance_install/INCISIVE152/tools/inca/include -o top_golden_model.so ../tb/top_tensorcore_uvm/env/top_golden_model.cpp
 
 # Step 2: Run the TensorCore top-level UVM testbench with the compiled golden model
-irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv ../code/*.sv ../tb/top_tensorcore_uvm/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test +UVM_TIMEOUT=500000ns -gui -linedebug 
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv /home/DARSHAN/volare/volare/gf180mcu/versions/c6d73a35f524070e85faff4a6a9eef49553ebc2b/gf180mcuD/libs.ref/gf180mcu_fd_ip_sram/verilog/gf180mcu_fd_ip_sram__sram256x8m8wm1.v ../code/*.sv ../tb/testbench/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test +UVM_TIMEOUT=500000ns -gui -linedebug 
+
+#######################   final test ######################
+
+# Step 1: Compile the golden model shared library
+g++ -m64 -fPIC -shared -I/home/ece-server/cadance_install/INCISIVE152/tools/inca/include -o top_golden_model.so ../tb/top_tensorcore_uvm/env/top_golden_model.cpp
+
+# Step 2: Run the TensorCore top-level UVM testbench with the compiled golden model
+irun -64bit -sv -uvm -access +rwc -timescale 1ns/1ps -incdir ../tb/top_tensorcore_uvm ../tb/top_tensorcore_uvm/system_top_if.sv ../tb/top_tensorcore_uvm/top_uvm_pkg.sv /home/DARSHAN/volare/volare/gf180mcu/versions/c6d73a35f524070e85faff4a6a9eef49553ebc2b/gf180mcuD/libs.ref/gf180mcu_fd_ip_sram/verilog/gf180mcu_fd_ip_sram__sram256x8m8wm1.v ../code/*.sv ../tb/testbench/tb_top_tensorcore.sv -top tb_top_tensorcore -sv_lib top_golden_model.so +UVM_TESTNAME=tc42_ultimate_signoff_test +UVM_TIMEOUT=500000ns
+
+#######################   Simple Testbenches ######################
+
+# Top TensorCore Simple (Non-UVM)
+irun -64bit -sv -access +rwc -timescale 1ns/1ps ../tb/packages/uvm_report_pkg.sv ../tb/testbench/tb_top_tensorcore_simple.sv ../code/*.sv -top tb_top_tensorcore_simple
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+irun -64bit -sv -access +rwc -timescale 1ns/1ps ../tb/packages/uvm_report_pkg.sv ../tb/testbench/tb_top_tensorcore_simple.sv ../code/*.sv -top tb_top_tensorcore_simple

@@ -55,7 +55,16 @@ module top_tensorcore_lite (
     input  logic         bist_start_i,
     input  logic [511:0] expected_misr_sig_i,
     output logic         bist_done_o,
-    output logic         bist_fail_o
+    output logic         bist_fail_o,
+
+    // --------------------------------------------------------
+    // 6. DFT (Scan Chain) Pins for Genus Insertion
+    // --------------------------------------------------------
+    input  logic         scan_clk_port,
+    input  logic         scan_en_port,
+    input  logic         test_mode_port,
+    input  logic [3:0]   scan_in_port,
+    output logic [3:0]   scan_out_port
 );
 
     // ========================================================
@@ -265,16 +274,23 @@ module top_tensorcore_lite (
     // ========================================================
     // 5. 4KB SRAM Subsystem
     // ========================================================
+    logic [7:0]   sram_addr;
+    logic [127:0] sram_write_mask;
+    
+    // Address muxing (Write takes priority in a single-port memory)
+    assign sram_addr = sram_we_mux ? sram_w_addr_mux : sram_r_addr_mux;
+    
+    // 128-bit Active-Low Write Enable Mask (0 = Write, 1 = Read/Idle)
+    assign sram_write_mask = sram_we_mux ? 128'h0 : {128{1'b1}};
+
     sram_subsystem_16bank u_sram_4kb (
-        .clk              (clk_i),
-        .rst_n            (rst_ni),
-        .en               (1'b1), // Always enabled at top level
-        .we               (sram_we_mux),
-        .re               (sram_re_mux),
-        .w_base_addr      (sram_w_addr_mux),
-        .r_base_addr      (sram_r_addr_mux),
-        .w_data_128b      (sram_w_data_mux),
-        .r_data_flat_128b (sram_r_data_out)
+        .clk  (clk_i),
+        .cen  (~(sram_we_mux | sram_re_mux)), // Active-Low chip enable
+        .gwen (~sram_we_mux),                 // Active-Low global write enable
+        .wen  (sram_write_mask),              // Active-Low bit-write mask
+        .addr (sram_addr),
+        .din  (sram_w_data_mux),
+        .dout (sram_r_data_out)
     );
 
     // ========================================================

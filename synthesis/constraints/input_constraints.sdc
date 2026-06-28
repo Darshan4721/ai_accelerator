@@ -1,14 +1,14 @@
 # ==============================================================================
 # SysMAC-Hybrid: AI Accelerator - Master SDC Constraints File
-# Target Frequency: 250 MHz (4.0 ns period)
+# Target Frequency: 100 MHz (10.0 ns period)
 # Module: top_tensorcore_lite
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
 # 1. Clock Definitions
 # ------------------------------------------------------------------------------
-# Primary System Clock (250 MHz)
-create_clock -name sys_clk -period 4.0 [get_ports clk_i]
+# Primary System Clock (100 MHz)
+create_clock -name sys_clk -period 10.0 [get_ports clk_i]
 
 # Clock Uncertainties (Jitter & Skew margin)
 set_clock_uncertainty -setup 0.2 [get_clocks sys_clk]
@@ -35,17 +35,17 @@ create_clock -name v_jtag_clk -period 50.0
 # Apply an input delay to the bus bound to the virtual clock to create a valid startpoint
 set_input_delay 0.0 -clock v_jtag_clk [get_ports expected_misr_sig_i*]
 
-# Now the STA tool can perfectly calculate the 4.0ns datapath-only physical routing constraint
-set_max_delay 4.0 -datapath_only \
+# Now the STA tool can perfectly calculate the 10.0ns physical routing constraint
+set_max_delay 10.0 \
     -from [get_ports expected_misr_sig_i*] \
     -to   [get_cells -hierarchical *u_bist_ctrl*]
 
 # ------------------------------------------------------------------------------
 # 4. Input / Output Delays (System I/O)
 # ------------------------------------------------------------------------------
-# Assume 30% of clock period (1.2ns) is consumed externally by SoC/DMA
-set in_delay_val 1.2
-set out_delay_val 1.2
+# Assume 30% of clock period (3.0ns) is consumed externally by SoC/DMA
+set in_delay_val 3.0
+set out_delay_val 3.0
 
 # AXI-Lite Input/Output Delays
 set axi_lite_inputs [get_ports {s_axi_awaddr* s_axi_awvalid s_axi_wdata* s_axi_wvalid s_axi_bready s_axi_araddr* s_axi_arvalid s_axi_rready}]
@@ -83,7 +83,7 @@ set_output_delay -min 0.0            -clock sys_clk $bist_outputs
 # 5. Environmental Attributes
 # ------------------------------------------------------------------------------
 # Set maximum transition time for all nets
-set_max_transition 0.5 [current_design]
+set_max_transition 0.6 [current_design]
 
 # Set maximum fanout limit
 set_max_fanout 20 [current_design]
