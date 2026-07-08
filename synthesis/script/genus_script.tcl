@@ -69,18 +69,12 @@ check_dft_rules
 # ------------------------------------------------------------------------------
 # PHASE 5: Core Physical Synthesis
 # ------------------------------------------------------------------------------
-# Effort levels set to high for maximum PPA optimization
-set_db / .syn_generic_effort high
-set_db / .syn_map_effort high
-set_db / .syn_opt_effort high
-
-# Safely cap the spatial effort to bypass the MMMC license block
-set_db / .opt_spatial_effort standard
+# Removed global effort attributes to prevent MMMC license conflicts
 
 # 1. Map to generic gates
 syn_generic -physical
 # 2. Map to GF180MCU cells (Flops are converted to scan-flops here, but left unstitched)
-syn_map -physical
+syn_map -physical -effort high
 # 3. Optimize placement and timing
 syn_opt -spatial
 

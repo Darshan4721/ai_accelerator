@@ -85,3 +85,14 @@ irun -64bit -sv -access +rwc -timescale 1ns/1ps ../tb/packages/uvm_report_pkg.sv
 
 
 irun -64bit -sv -access +rwc -timescale 1ns/1ps ../tb/packages/uvm_report_pkg.sv ../tb/testbench/tb_top_tensorcore_simple.sv ../code/*.sv -top tb_top_tensorcore_simple
+
+
+####################### test with macro #######################
+
+irun -64bit -sv -access +rwc -timescale 1ns/1ps -notimingchecks ../tb/packages/uvm_report_pkg.sv ../tb/testbench/tb_top_tensorcore_simple.sv ../code/*.sv -top tb_top_tensorcore_simple
+
+
+
+################# top module verification with v1 code (behavioral SRAM) #################
+
+irun -64bit -sv -clean -access +rwc -timescale 1ns/1ps ../tb/packages/uvm_report_pkg.sv ../tb/testbench/tb_top_tensorcore_simple.sv ../code/*.sv -top tb_top_tensorcore_simple

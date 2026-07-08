@@ -4,7 +4,7 @@ module bist_top_controller #(
     parameter LBIST_CYCLES = 10000
 )(
     input  logic         clk,
-    input  logic         rst_n,
+    input  logic         rst,
     
     // Global BIST Control
     input  logic         bist_start,
@@ -41,7 +41,7 @@ module bist_top_controller #(
     
     mbist_march_c u_mbist (
         .clk(clk),
-        .rst_n(rst_n),
+        .rst(rst),
         .mbist_en(mbist_en),
         .mbist_done(mbist_done_int),
         .mbist_fail(mbist_fail_int),
@@ -56,7 +56,7 @@ module bist_top_controller #(
     
     lfsr_prpg u_lfsr (
         .clk(clk),
-        .rst_n(rst_n),
+        .rst(rst),
         .en(lfsr_en),
         .seed(lfsr_seed),
         .prpg_out(lfsr_prpg_out)
@@ -64,7 +64,7 @@ module bist_top_controller #(
     
     misr_compressor u_misr (
         .clk(clk),
-        .rst_n(rst_n),
+        .rst(rst),
         .en(misr_en),
         .data_in(array_results_in),
         .signature(misr_signature)
@@ -90,30 +90,30 @@ module bist_top_controller #(
     // Or we can drive bist_fail directly as an assign if the module allows, but since it's an output logic,
     // we will drive it in the S_DONE state using this logic.
 
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+    always_ff @(posedge clk) begin
+        if (rst) begin
             state <= S_IDLE;
             mbist_en <= 0;
             lfsr_en <= 0;
             misr_en <= 0;
+            bist_done <= 0;
+            bist_fail <= 0;
+            lbist_counter <= 0;
+            latched_mbist_fail <= 0;
+            latched_lbist_fail <= 0;
+        end else begin
+            case (state)
+                S_IDLE: begin
+                    mbist_en <= 0;
+                    lfsr_en <= 0;
+                    misr_en <= 0;
                     bist_done <= 0;
                     bist_fail <= 0;
                     lbist_counter <= 0;
                     latched_mbist_fail <= 0;
                     latched_lbist_fail <= 0;
-                end else begin
-                    case (state)
-                        S_IDLE: begin
-                            mbist_en <= 0;
-                            lfsr_en <= 0;
-                            misr_en <= 0;
-                            bist_done <= 0;
-                            bist_fail <= 0;
-                            lbist_counter <= 0;
-                            latched_mbist_fail <= 0;
-                            latched_lbist_fail <= 0;
-                            
-                            if (bist_start) begin
+                    
+                    if (bist_start) begin
                         state <= S_RUN_MBIST;
                     end
                 end
@@ -142,7 +142,6 @@ module bist_top_controller #(
                 end
                 
                 S_CHECK_LBIST: begin
-                    // LFSR/MISR are disabled. Compare signature strictly in this 1 cycle window.
                     if (misr_signature !== expected_misr_sig) begin
                         latched_lbist_fail <= 1;
                     end else begin
@@ -153,7 +152,6 @@ module bist_top_controller #(
                 
                 S_DONE: begin
                     bist_done <= 1;
-                    // The OR gate evaluates the failure correctly
                     if (latched_mbist_fail | latched_lbist_fail) begin
                         bist_fail <= 1;
                     end else begin
@@ -165,5 +163,6 @@ module bist_top_controller #(
             endcase
         end
     end
-
 endmodule
+
+

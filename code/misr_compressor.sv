@@ -2,7 +2,7 @@
 // Compresses 16 parallel 32-bit partial sum outputs into a single signature
 module misr_compressor (
     input  logic         clk,
-    input  logic         rst_n,
+    input  logic         rst,
     input  logic         en,
     input  logic [511:0] data_in, // 16 * 32-bit outputs
     output logic [511:0] signature
@@ -11,8 +11,8 @@ module misr_compressor (
     logic [511:0] misr_reg;
 
     // Polynomial for 512-bit MISR (Standard CRC-512 style feedback)
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+    always_ff @(posedge clk ) begin
+        if (rst) begin
             misr_reg <= 512'h0;
         end else if (en) begin
             // Shift and XOR incoming data with current signature
@@ -24,3 +24,4 @@ module misr_compressor (
     assign signature = misr_reg;
 
 endmodule
+

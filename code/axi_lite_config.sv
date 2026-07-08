@@ -120,20 +120,30 @@ module axi_lite_config (
     // --------------------------------------------------------
     logic sticky_rx_done;
     logic sticky_mac_done;
+    logic sticky_wt_locked;
 
     always_ff @(posedge clk) begin
         if (rst) begin
-            sticky_rx_done  <= 1'b0;
+            sticky_rx_done <= 1'b0;
             sticky_mac_done <= 1'b0;
+            sticky_wt_locked <= 1'b0;
         end else begin
-            // 1. Hardware sets the flags on the 1-cycle pulses
-            if (rx_matrix_done) sticky_rx_done  <= 1'b1;
-            if (mac_done)       sticky_mac_done <= 1'b1;
+            // 1. Hardware sets the flag on the 1-cycle pulse from axis_rx
+            if (rx_matrix_done) begin
+                sticky_rx_done <= 1'b1;
+            end
+            if (mac_done) begin
+                sticky_mac_done <= 1'b1;
+            end
+            if (wt_locked) begin
+                sticky_wt_locked <= 1'b1;
+            end
             
-            // 2. Software clears the flags when writing to the Control Register (0x00)
+            // 2. Software clears the flag when writing to the Control Register (0x00)
             if (wr_state == S_WR_PROCESS && latched_awaddr == 32'h00 && latched_wdata[0] == 1'b1) begin
-                sticky_rx_done  <= 1'b0;
+                sticky_rx_done <= 1'b0;
                 sticky_mac_done <= 1'b0;
+                sticky_wt_locked <= 1'b0;
             end
         end
     end
@@ -177,7 +187,7 @@ module axi_lite_config (
                     // Address Decoding & Data Fetching
                     if (latched_araddr == 32'h04) begin
                         // Map Status Reg: Bit 2: RX_DONE | Bit 1: MAC_DONE | Bit 0: WT_LOCKED
-                        s_axi_rdata <= {29'b0, sticky_rx_done, sticky_mac_done, wt_locked};
+                        s_axi_rdata <= {29'b0, sticky_rx_done, sticky_mac_done, sticky_wt_locked};
                     end else begin
                         // Unmapped Address Protection: Return all zeroes
                         s_axi_rdata <= 32'h0;

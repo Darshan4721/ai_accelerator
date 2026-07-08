@@ -2,7 +2,7 @@
 // Algorithm: {w0}up; {r0, w1}up; {r1, w0}down
 module mbist_march_c (
     input  logic         clk,
-    input  logic         rst_n,
+    input  logic         rst,
     
     // BIST Control
     input  logic         mbist_en,
@@ -34,8 +34,8 @@ module mbist_march_c (
     logic       read_req;   // True if we requested a read LAST cycle
     logic       read_pending; // True if data is arriving THIS cycle
 
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+    always_ff @(posedge clk) begin
+        if (rst) begin
             state <= IDLE;
             addr_ptr <= 0;
             req_addr <= 0;

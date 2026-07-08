@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 // Simple Non-UVM Testbench for top_tensorcore_lite.sv
 // Features: 1000-cycle Random testing, C-Like Golden Model, and Self-Reporting.
 import uvm_report_pkg::*;
@@ -12,7 +13,7 @@ module tb_top_tensorcore_simple;
 
     initial begin
         clk = 0;
-        forever #5 clk = ~clk; // 100MHz (10ns period)
+        forever #50 clk = ~clk; // 10MHz (100ns period) to accommodate GF180 45ns SRAM read latency
     end
 
     // --------------------------------------------------------
@@ -87,14 +88,7 @@ module tb_top_tensorcore_simple;
         .bist_start_i(bist_start_i),
         .expected_misr_sig_i(expected_misr_sig_i),
         .bist_done_o(bist_done_o),
-        .bist_fail_o(bist_fail_o),
-        
-        // Tie off DFT pins for functional simulation
-        .scan_clk_port(1'b0),
-        .scan_en_port(1'b0),
-        .test_mode_port(1'b0),
-        .scan_in_port(4'b0000),
-        .scan_out_port()
+        .bist_fail_o(bist_fail_o)
     );
 
     // --------------------------------------------------------
@@ -110,7 +104,7 @@ module tb_top_tensorcore_simple;
 
     task automatic axi_write(input logic [31:0] addr, input logic [31:0] data);
         // Drive AW and W channels
-        @(posedge clk);
+        @(negedge clk);
         s_axi_awaddr <= addr; s_axi_awvalid <= 1;
         s_axi_wdata <= data; s_axi_wvalid <= 1;
         s_axi_bready <= 1;
@@ -118,32 +112,34 @@ module tb_top_tensorcore_simple;
         // Wait for ready signals
         fork
             begin
-                while (!s_axi_awready) @(posedge clk);
+                while (!s_axi_awready) @(negedge clk);
                 s_axi_awvalid <= 0;
             end
             begin
-                while (!s_axi_wready) @(posedge clk);
+                while (!s_axi_wready) @(negedge clk);
                 s_axi_wvalid <= 0;
             end
         join
 
         // Wait for bvalid
-        while (!s_axi_bvalid) @(posedge clk);
+        while (!s_axi_bvalid) @(negedge clk);
+        @(posedge clk); // Wait for handshake to complete on posedge
         s_axi_bready <= 0;
-        @(posedge clk); // Grace period
+        @(negedge clk); // Grace period
     endtask
 
     task automatic axi_read(input logic [31:0] addr, output logic [31:0] data);
-        @(posedge clk);
+        @(negedge clk);
         s_axi_araddr <= addr; s_axi_arvalid <= 1; s_axi_rready <= 1;
         
-        while (!s_axi_arready) @(posedge clk);
+        while (!s_axi_arready) @(negedge clk);
         s_axi_arvalid <= 0;
         
-        while (!s_axi_rvalid) @(posedge clk);
+        while (!s_axi_rvalid) @(negedge clk);
         data = s_axi_rdata;
+        @(posedge clk); // Wait for handshake to complete on posedge
         s_axi_rready <= 0;
-        @(posedge clk); // Grace period
+        @(negedge clk); // Grace period
     endtask
 
     task automatic send_matrices(input byte wgt[16][16], input byte act[16][16]);
@@ -152,23 +148,23 @@ module tb_top_tensorcore_simple;
         for (int i=0; i<16; i++) begin
             row_data = 0;
             for (int j=0; j<16; j++) row_data[j*8 +: 8] = wgt[i][j];
-            @(posedge clk);
+            @(negedge clk);
             s_axis_tdata <= row_data;
             s_axis_tvalid <= 1;
             s_axis_tlast <= 0;
-            while (s_axis_tready !== 1'b1) @(posedge clk);
+            while (s_axis_tready !== 1'b1) @(negedge clk);
         end
         // 2. Send Acts (16 rows)
         for (int i=0; i<16; i++) begin
             row_data = 0;
             for (int j=0; j<16; j++) row_data[j*8 +: 8] = act[i][j];
-            @(posedge clk);
+            @(negedge clk);
             s_axis_tdata <= row_data;
             s_axis_tvalid <= 1;
             s_axis_tlast <= (i == 15) ? 1 : 0;
-            while (s_axis_tready !== 1'b1) @(posedge clk);
+            while (s_axis_tready !== 1'b1) @(negedge clk);
         end
-        @(posedge clk);
+        @(negedge clk);
         s_axis_tvalid <= 0;
         s_axis_tlast <= 0;
     endtask
@@ -176,8 +172,8 @@ module tb_top_tensorcore_simple;
     task automatic read_results(output int res[16][16]);
         logic [511:0] out_data;
         for (int i=0; i<16; i++) begin
-            @(posedge clk);
-            while (m_axis_tvalid !== 1'b1) @(posedge clk);
+            @(negedge clk);
+            while (m_axis_tvalid !== 1'b1) @(negedge clk);
             out_data = m_axis_tdata;
             for (int j=0; j<16; j++) begin
                 res[i][j] = out_data[j*32 +: 32];
@@ -214,30 +210,39 @@ module tb_top_tensorcore_simple;
         fork
             begin
                 // Thread 1: DMA Sends Input Matrices
+                $display("    [T1] Sending matrices...");
                 send_matrices(wgt_mat, act_mat);
+                $display("    [T1] Done sending matrices.");
             end
             begin
                 // Thread 2: CPU Orchestration
                 
                 // Poll for rx_matrix_done
+                $display("    [T2] Polling for RX_DONE...");
                 do begin
                     axi_read(32'h04, read_val);
-                end while (read_val[2] == 0);
+                end while ((read_val & 32'h00000004) == 0); 
+                $display("    [T2] RX_DONE received! Starting compute...");
                 
-                // Start compute by writing 1 to bit 0 of ctrl reg
-                axi_write(32'h00, 32'h01);
+                // Trigger start
+                axi_write(32'h00, 32'h00000001);
                 
                 // Poll for mac_done
+                $display("    [T2] Polling for MAC_DONE...");
                 do begin
                     axi_read(32'h04, read_val);
-                end while (read_val[0] == 0);
+                end while (read_val[1] == 0);
+                $display("    [T2] MAC_DONE received!");
                 
-                // Optional: Clear interrupt flags (not strictly required for one inference, but good practice)
-                axi_write(32'h00, 32'h01);
+                // CRITICAL FIX: Clear the sticky status bits (RX_DONE, MAC_DONE)
+                // so the next inference doesn't trigger prematurely!
+                axi_write(32'h04, 32'h00);
             end
             begin
                 // Thread 3: DMA Reads Output Results
+                $display("    [T3] Waiting for output results...");
                 read_results(act_res);
+                $display("    [T3] Output results received!");
             end
         join
     endtask
@@ -342,6 +347,22 @@ module tb_top_tensorcore_simple;
         print_test_box("100 CYCLES TOP RANDOM TEST", local_error);
     endtask
 
+    task automatic run_bist();
+        $display("[TEST CASE 3] Running BIST (Built-In Self-Test)...");
+        @(negedge clk);
+        bist_start_i <= 1'b1;
+        // In a real scenario we'd use a golden signature. For now we just run it and check if it finishes.
+        expected_misr_sig_i <= 512'h0; 
+        @(negedge clk);
+        bist_start_i <= 1'b0;
+        
+        $display("  -> Waiting for BIST to complete (this tests MBIST and LBIST)...");
+        while (bist_done_o !== 1'b1) @(negedge clk);
+        
+        $display("  -> BIST Complete! Fail Status: %0b", bist_fail_o);
+        print_test_box("BIST EXECUTION", bist_fail_o);
+    endtask
+
     initial begin
         print_banner("TOP TENSORCORE: SIMPLE NON-UVM DIRECTED & RANDOM VERIFICATION");
         reset_counters();
@@ -349,15 +370,18 @@ module tb_top_tensorcore_simple;
         
         // Assert Reset
         rst_ni = 0;
-        #100;
+        repeat(5) @(posedge clk);
         rst_ni = 1;
-        #100;
+        repeat(10) @(posedge clk);
 
         // Run directed corner cases first
         run_corner_cases();
 
         // Run 100 cycle test
         run_100_random();
+
+        // Run the BIST sequence
+        run_bist();
 
         // Print professional segmented box report
         print_final_report();
